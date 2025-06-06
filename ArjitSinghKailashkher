@@ -1,0 +1,105 @@
+import numpy as np
+import plotly.graph_objects as go
+import dash
+from dash import dcc, html
+from dash.dependencies import Input, Output
+
+# Kailash Kher's Voice Equation
+def kailash_kher_voice(f, t, A, alpha, phi):
+    return A * np.exp(-alpha * f) * np.sin(2 * np.pi * f * t + phi)
+
+# Arijit Singh's Voice Equation
+def arijit_singh_voice(f, t, A, alpha, phi):
+    return A * np.exp(-alpha * f) * np.sin(2 * np.pi * f * t + phi)
+
+app = dash.Dash(__name__)
+
+# App Layout
+app.layout = html.Div([
+    # App Title
+    html.Div([
+        html.H2("🎶 Side-by-Side 3D Voice Comparison: Kailash Kher vs. Arijit Singh 🎶", 
+                style={'textAlign': 'center', 'color': '#ff4d4d', 'fontFamily': 'Arial Black', 'padding': '10px'}),
+        html.H3("Curated by Ajinkya Kotwal ❤️", style={'textAlign': 'center', 'color': '#ff944d'})
+    ], style={'background': 'linear-gradient(to right, #ffe6e6, #ffcccc)', 'borderRadius': '10px', 'padding': '10px'}),
+
+    # Acknowledgment Message
+    html.P("⚠️ Kindly acknowledge the original work and refrain from unauthorized use.", 
+           style={'textAlign': 'center', 'fontWeight': 'bold', 'color': '#d9534f'}),
+
+    # Vocal Characteristics Section
+    html.Div([
+        html.H3("🔍 Vocal Characteristics", style={'textAlign': 'center', 'color': '#4d88ff'}),
+        html.Div([
+            html.P(id="amplitude-text", style={'padding': '10px', 'borderRadius': '5px', 'border': '1px solid #888'}),
+            html.P(id="damping-text", style={'padding': '10px', 'borderRadius': '5px', 'border': '1px solid #888'}),
+            html.P(id="phase-text", style={'padding': '10px', 'borderRadius': '5px', 'border': '1px solid #888'}),
+        ], style={'display': 'flex', 'justifyContent': 'center', 'gap': '10px'})
+    ], style={'background': 'linear-gradient(120deg, #ffcccc, #ffe6e6)', 'padding': '20px', 'borderRadius': '10px'}),
+
+    # Sliders for tuning vocal properties
+    html.Div([
+        html.Label("🎤 Amplitude (Loudness)", style={'fontWeight': 'bold', 'color': '#ff6666'}),
+        dcc.Slider(id='amplitude', min=0.5, max=2.0, step=0.1, value=1.5, marks={0.5: 'Low', 2.0: 'High'}),
+
+        html.Label("🌊 Damping Factor (Voice Texture)", style={'fontWeight': 'bold', 'color': '#4d94ff'}),
+        dcc.Slider(id='damping', min=0.1, max=1.0, step=0.1, value=0.8, marks={0.1: 'Silky', 1.0: 'Rugged'}),
+
+        html.Label("🎼 Phase Shift (Modulation)", style={'fontWeight': 'bold', 'color': '#ff66b2'}),
+        dcc.Slider(id='phase', min=0, max=np.pi/2, step=0.1, value=np.pi/4, marks={0: 'Stable', np.pi/2: 'Vibrato'})
+    ], style={'padding': '20px', 'borderRadius': '10px', 'background': '#f0f0f0'}),
+
+    # Combined Graphs Side-by-Side
+    html.Div([
+        dcc.Graph(id='side-by-side-graph')
+    ], style={'borderRadius': '10px', 'background': '#fff', 'padding': '10px'}),
+], style={'backgroundColor': '#f7f7f7', 'padding': '30px'})
+
+@app.callback(
+    Output('side-by-side-graph', 'figure'),
+    [Input('amplitude', 'value'),
+     Input('damping', 'value'),
+     Input('phase', 'value')]
+)
+def update_graph(A, alpha, phi):
+    f_values = np.linspace(100, 1000, 100)
+    t_values = np.linspace(0, 1, 100)
+    F, T = np.meshgrid(f_values, t_values)
+
+    Z_kailash = kailash_kher_voice(F, T, A * 2.5, alpha, phi)
+    Z_arijit = arijit_singh_voice(F, T, A-0.5, alpha-0.3, phi-0.1)
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Surface(z=Z_kailash, x=F, y=T, colorscale='Inferno', name="Kailash Kher"))
+    fig.add_trace(go.Surface(z=Z_arijit, x=F, y=T, colorscale='Blues', name="Arijit Singh"))
+
+    fig.update_layout(
+        title="🎤 Side-by-Side Vocal Texture Comparison",
+        scene=dict(xaxis_title="Frequency (Hz)", yaxis_title="Time (s)", zaxis_title="Amplitude"),
+        margin=dict(l=0, r=0, t=50, b=0),
+        autosize=True
+    )
+
+    return fig
+
+# Callback for Dynamic Text Explanations
+@app.callback(
+    [Output('amplitude-text', 'children'),
+     Output('damping-text', 'children'),
+     Output('phase-text', 'children')],
+    [Input('amplitude', 'value'),
+     Input('damping', 'value'),
+     Input('phase', 'value')]
+)
+def update_text(A, alpha, phi):
+    amp_text = f"🎤 Amplitude: {'High' if A > 1.5 else 'Medium' if A > 1.0 else 'Low'} → {'Strong projection and power!' if A > 1.5 else 'Balanced control.' if A > 1.0 else 'Soft and delicate.'}"
+    
+    damping_text = f"🌊 Damping: {'High' if alpha > 0.6 else 'Medium' if alpha > 0.3 else 'Low'} → {'Rugged voice texture!' if alpha > 0.6 else 'Smooth transitions.' if alpha > 0.3 else 'Silky, fluid voice.'}"
+    
+    phase_text = f"🎼 Phase Shift: {'Strong vibrato' if phi > np.pi/4 else 'Moderate modulation' if phi > np.pi/6 else 'Stable singing style'}"
+
+    return amp_text, damping_text, phase_text
+
+if __name__ == '__main__':
+    app.run(debug=True, use_reloader=True)
